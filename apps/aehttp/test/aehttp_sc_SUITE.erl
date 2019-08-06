@@ -715,7 +715,10 @@ channel_update(#{initiator := IConnPid, responder :=RConnPid},
       updates := Updates} = channel_sign_tx(AcknowledgerPubkey, AcknowledgerPid, AcknowledgerPrivkey, <<"channels.update_ack">>, Config),
 
     {ok, #{<<"state">> := NewState}} = wait_for_channel_event(IConnPid, update, Config),
-    {ok, #{<<"state">> := NewState}} = wait_for_channel_event(RConnPid, update, Config),
+    ct:log("NewState: ~p", [NewState]),
+    Wtf = wait_for_channel_event(RConnPid, update, Config),
+    ct:log("NewState2: ~p", [Wtf]),
+    {ok, #{<<"state">> := NewState}} = Wtf,
     {ok, SignedStateTxBin} = aeser_api_encoder:safe_decode(transaction, NewState),
     SignedStateTx = aetx_sign:deserialize_from_binary(SignedStateTxBin),
 
@@ -1025,19 +1028,19 @@ sc_ws_leave_(Config) ->
     Options = proplists:get_value(channel_options, Config),
     Port = maps:get(port, Options),
     RPort = Port+1,
-    ReestablOptions = #{existing_channel_id => IDi,
+    ReestablishOptions = #{existing_channel_id => IDi,
                         offchain_tx => StI,
                         port => RPort,
                         protocol => maps:get(protocol, Options),
                         state_password => ?CACHE_DEFAULT_PASSWORD},
-    ReestablOptions.
+    ReestablishOptions.
 
 
-sc_ws_reestablish_(ReestablOptions, Config) ->
-    {ok, RrConnPid} = channel_ws_start(responder, ReestablOptions, Config),
+sc_ws_reestablish_(ReestablishOptions, Config) ->
+    {ok, RrConnPid} = channel_ws_start(responder, ReestablishOptions, Config),
     {ok, IrConnPid} = channel_ws_start(initiator, maps:put(
                                                     host, <<"localhost">>,
-                                                    ReestablOptions), Config),
+                                                    ReestablishOptions), Config),
     ok = ?WS:register_test_for_channel_events(RrConnPid, [info, update]),
     ok = ?WS:register_test_for_channel_events(IrConnPid, [info, update]),
     {ok, #{<<"event">> := <<"channel_reestablished">>}} =
@@ -2752,8 +2755,8 @@ sc_ws_cheating_close_solo_(Config, ChId, Poi, WhoCloses) ->
 
 sc_ws_leave_reestablish(Config0) ->
     Config = sc_ws_open_(Config0),
-    ReestablOptions = sc_ws_leave_(Config),
-    Config1 = sc_ws_reestablish_(ReestablOptions, Config),
+    ReestablishOptions = sc_ws_leave_(Config),
+    Config1 = sc_ws_reestablish_(ReestablishOptions, Config),
     ok = sc_ws_update_(Config1),
     ok = sc_ws_close_(Config1).
 
