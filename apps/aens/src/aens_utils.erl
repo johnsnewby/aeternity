@@ -15,7 +15,8 @@
          check_split_name/1,
          name_to_ascii/1,
          to_ascii/1,
-         ascii_encode/1]).
+         ascii_encode/1,
+         top_name/1]).
 
 %%%===================================================================
 %%% API
@@ -101,3 +102,12 @@ ascii_encode(Name) ->
 
 is_name_registrar(Name) ->
     lists:member(Name, aec_governance:name_registrars()).
+
+top_name(Subname) ->
+    case check_split_name(Subname) of
+        {ok, Kind, Parts} ->
+            [TopNamePart, Registrar] = lists:nthtail(length(Parts) - 2, Parts),
+            {ok, Kind, <<TopNamePart/binary, ".", Registrar/binary>>};
+        Error ->
+            Error
+    end.
